@@ -1,8 +1,10 @@
 package com.jobmarketanalyzer.job_offer_producer.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jobmarketanalyzer.job_offer_producer.model.JobOffer;
+import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
+import com.jobmarketanalyzer.job_offer_producer.model.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -44,27 +50,73 @@ public class FranceTravailService implements FetchService {
 
     @Override
     @Async
-    public CompletableFuture<List<JobOffer>> fetchDataFromApi() {
-        String accessToken = getAccessToken();
+    public CompletableFuture<JobOffersDTO> fetchDataFromApi() {
+        log.info("Call France Travail API ...");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Accept", "application/json");
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        log.info("Call to France Travail ...");
-        //todo : concate criteria -> typeContrat=LIB&motsCles=Java
-        ResponseEntity<String> response = restTemplate.exchange(franceTravailApiUrl+"typeContrat=LIB&motsCles=Java",
+        ResponseEntity<String> response = restTemplate.exchange(
+                buildApiUrl(),
                 HttpMethod.GET,
-                entity,
-                String.class);
+                new HttpEntity<>(buildHeaders()),
+                String.class
+        );
 
-        log.info("France Travail : " + response);
-        return CompletableFuture.completedFuture(List.of());
+        log.info("France Travail API answer with a status code : {}", response.getStatusCode());
+
+        //todo Handle special case -> 206 Partial Content
+        return switch (response.getStatusCode()){
+            case HttpStatus.OK -> CompletableFuture.completedFuture(handleStatusOk(response));
+            case HttpStatus.NO_CONTENT -> CompletableFuture.completedFuture(null);
+            default -> {
+                log.warn("France Travail API response status unsupported: {}", response.getStatusCode());
+                 yield CompletableFuture.completedFuture(null);
+            }
+        };
     }
 
-    private String getAccessToken(){
+    private JobOffersDTO handleStatusOk(ResponseEntity<String>  response){
+        log.info("Job offers successfully retrieved from France Travail.");
+        return new JobOffersDTO(SourceOffer.FRANCE_TRAVAIL.name(), extractJobOffersFromResponse(response.getBody()));
+    }
+
+    private HttpHeaders buildHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Accept", "application/json");
+        headers.set("Authorization", "Bearer " + getAccessToken());
+
+        return headers;
+    }
+
+    private String buildApiUrl() {
+        final String freelanceContract = "LIB";
+        final String keywords = "Java";
+
+        LocalDate today = LocalDate.now();
+        ZonedDateTime startOfDay = today.atStartOfDay(ZoneOffset.UTC);
+        String startOfDayFormatted = startOfDay.format(DateTimeFormatter.ISO_INSTANT);
+        ZonedDateTime endOfDay = today.atTime(23, 59, 59).atZone(ZoneOffset.UTC);
+        String endOfDayFormatted = endOfDay.format(DateTimeFormatter.ISO_INSTANT);
+
+        //todo remettre filtre date
+        return UriComponentsBuilder.fromHttpUrl(franceTravailApiUrl)
+                .queryParam("typeContrat", freelanceContract)
+                .queryParam("motsCles", keywords)
+//                .queryParam("minCreationDate", startOfDayFormatted)
+//                .queryParam("maxCreationDate", endOfDayFormatted)
+                .build()
+                .toUriString();
+    }
+
+    private String extractJobOffersFromResponse(String responseJson) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(responseJson);
+            return jsonNode.get("resultats").toString();
+        } catch (JsonProcessingException e) {
+            log.error("Error when parsing JSON response : {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String getAccessToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
@@ -84,13 +136,13 @@ public class FranceTravailService implements FetchService {
                 String.class
         );
 
-        if (response.getStatusCode() == HttpStatus.OK) {
+        if (HttpStatus.OK.equals(response.getStatusCode())) {
             log.info("Access Token successfully retrieved.");
 
             try {
                 JsonNode jsonNode = objectMapper.readTree(response.getBody());
                 return jsonNode.get("access_token").asText();
-            } catch (Exception e){
+            } catch (Exception e) {
                 log.error("Error parsing response body: {}", e.getMessage());
             }
 
