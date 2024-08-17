@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
-import com.jobmarketanalyzer.job_offer_producer.model.SourceOffer;
+import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
