@@ -19,6 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -51,29 +52,34 @@ public class FranceTravailService implements FetchService {
     @Override
     @Async
     public CompletableFuture<JobOffersDTO> fetchDataFromApi() {
-        log.info("Call France Travail API ...");
+        try {
+            log.info("Call France Travail API ...");
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                buildApiUrl(),
-                HttpMethod.GET,
-                new HttpEntity<>(buildHeaders()),
-                String.class
-        );
+            ResponseEntity<String> response = restTemplate.exchange(
+                    buildApiUrl(),
+                    HttpMethod.GET,
+                    new HttpEntity<>(buildHeaders()),
+                    String.class
+            );
 
-        log.info("France Travail API answer with a status code : {}", response.getStatusCode());
+            log.info("France Travail API answer with a status code : {}", response.getStatusCode());
 
-        return switch (response.getStatusCode()) {
-            case HttpStatus.OK -> CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
-            case HttpStatus.NO_CONTENT -> CompletableFuture.completedFuture(null);
-            case HttpStatus.PARTIAL_CONTENT -> {
-                log.warn("France Travail API response with partial content. May check the filters");
-                yield CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
-            }
-            default -> {
-                log.warn("France Travail API response status unsupported: {}", response.getStatusCode());
-                yield CompletableFuture.completedFuture(null);
-            }
-        };
+            return switch (response.getStatusCode()) {
+                case HttpStatus.OK -> CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
+                case HttpStatus.NO_CONTENT -> CompletableFuture.completedFuture(null);
+                case HttpStatus.PARTIAL_CONTENT -> {
+                    log.warn("France Travail API response with partial content. May check the filters");
+                    yield CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
+                }
+                default -> {
+                    log.warn("France Travail API response status unsupported: {}", response.getStatusCode());
+                    yield CompletableFuture.completedFuture(null);
+                }
+            };
+        } catch (RestClientException e) {
+            log.error("Error fetching data from France Travail: {}", e.getMessage());
+            return CompletableFuture.completedFuture(null);
+        }
     }
 
     private JobOffersDTO buildJobOffer(String body) {
@@ -92,6 +98,7 @@ public class FranceTravailService implements FetchService {
         final String freelanceContract = "LIB";
         final String keywords = "Java";
 
+        //todo when the scheduled task will be set to 00:00:01, get offers of yesterday
         LocalDate today = LocalDate.now();
         ZonedDateTime startOfDay = today.atStartOfDay(ZoneOffset.UTC);
         String startOfDayFormatted = startOfDay.format(DateTimeFormatter.ISO_INSTANT);
@@ -109,14 +116,22 @@ public class FranceTravailService implements FetchService {
 
     private String extractJobOffersFromResponse(String responseJson) {
         try {
+            String resultField = "resultats";
             JsonNode jsonNode = objectMapper.readTree(responseJson);
-            return jsonNode.get("resultats").toString();
+
+            if (jsonNode.has(resultField)) {
+                return jsonNode.get(resultField).toString();
+            }
+
+            log.warn("Field '{}' not found in the response.", resultField);
+            return "[]";
         } catch (JsonProcessingException e) {
             log.error("Error when parsing JSON response : {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }
 
+    //TODO: extract in an AuthenticationService
     private String getAccessToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -143,15 +158,15 @@ public class FranceTravailService implements FetchService {
             try {
                 JsonNode jsonNode = objectMapper.readTree(response.getBody());
                 return jsonNode.get("access_token").asText();
-            } catch (Exception e) {
-                log.error("Error parsing response body: {}", e.getMessage());
+            } catch (JsonProcessingException e) {
+                log.error("Failed to parse access token JSON: {}", e.getMessage());
+                throw new RuntimeException("Error parsing access token", e);
             }
 
         } else {
             log.error("Failed to retrieve access token. Status code: {}", response.getStatusCode());
             throw new RuntimeException("Failed to obtain access token: " + response.getStatusCode());
         }
-        return null;
     }
 
 }
