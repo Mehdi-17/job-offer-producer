@@ -62,20 +62,22 @@ public class FranceTravailService implements FetchService {
 
         log.info("France Travail API answer with a status code : {}", response.getStatusCode());
 
-        //todo Handle special case -> 206 Partial Content
-        return switch (response.getStatusCode()){
-            case HttpStatus.OK -> CompletableFuture.completedFuture(handleStatusOk(response));
+        return switch (response.getStatusCode()) {
+            case HttpStatus.OK -> CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
             case HttpStatus.NO_CONTENT -> CompletableFuture.completedFuture(null);
+            case HttpStatus.PARTIAL_CONTENT -> {
+                log.warn("France Travail API response with partial content. May check the filters");
+                yield CompletableFuture.completedFuture(buildJobOffer(response.getBody()));
+            }
             default -> {
                 log.warn("France Travail API response status unsupported: {}", response.getStatusCode());
-                 yield CompletableFuture.completedFuture(null);
+                yield CompletableFuture.completedFuture(null);
             }
         };
     }
 
-    private JobOffersDTO handleStatusOk(ResponseEntity<String>  response){
-        log.info("Job offers successfully retrieved from France Travail.");
-        return new JobOffersDTO(SourceOffer.FRANCE_TRAVAIL.name(), extractJobOffersFromResponse(response.getBody()));
+    private JobOffersDTO buildJobOffer(String body) {
+        return new JobOffersDTO(SourceOffer.FRANCE_TRAVAIL.name(), extractJobOffersFromResponse(body));
     }
 
     private HttpHeaders buildHeaders() {
@@ -96,12 +98,11 @@ public class FranceTravailService implements FetchService {
         ZonedDateTime endOfDay = today.atTime(23, 59, 59).atZone(ZoneOffset.UTC);
         String endOfDayFormatted = endOfDay.format(DateTimeFormatter.ISO_INSTANT);
 
-        //todo remettre filtre date
         return UriComponentsBuilder.fromHttpUrl(franceTravailApiUrl)
                 .queryParam("typeContrat", freelanceContract)
                 .queryParam("motsCles", keywords)
-//                .queryParam("minCreationDate", startOfDayFormatted)
-//                .queryParam("maxCreationDate", endOfDayFormatted)
+                .queryParam("minCreationDate", startOfDayFormatted)
+                .queryParam("maxCreationDate", endOfDayFormatted)
                 .build()
                 .toUriString();
     }
