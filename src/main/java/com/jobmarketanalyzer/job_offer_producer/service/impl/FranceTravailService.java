@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
+import com.jobmarketanalyzer.job_offer_producer.service.AuthenticationService;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +14,9 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -37,15 +35,7 @@ public class FranceTravailService implements FetchService {
     @Value("${france.travail.api.url}")
     private String franceTravailApiUrl;
 
-    @Value("${france.travail.access.token.url}")
-    private String franceTravailAccessTokenUrl;
-
-    @Value("${france.travail.client.id}")
-    private String clientId;
-
-    @Value("${france.travail.client.secret}")
-    private String clientSecret;
-
+    private final AuthenticationService authenticationService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -89,7 +79,7 @@ public class FranceTravailService implements FetchService {
     private HttpHeaders buildHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Accept", "application/json");
-        headers.set("Authorization", "Bearer " + getAccessToken());
+        headers.set("Authorization", "Bearer " + authenticationService.getFranceTravailAccessToken());
 
         return headers;
     }
@@ -107,8 +97,8 @@ public class FranceTravailService implements FetchService {
         return UriComponentsBuilder.fromHttpUrl(franceTravailApiUrl)
                 .queryParam("typeContrat", freelanceContract)
                 .queryParam("motsCles", keywords)
-                .queryParam("minCreationDate", startOfDayFormatted)
-                .queryParam("maxCreationDate", endOfDayFormatted)
+//                .queryParam("minCreationDate", startOfDayFormatted)
+//                .queryParam("maxCreationDate", endOfDayFormatted)
                 .build()
                 .toUriString();
     }
@@ -129,43 +119,4 @@ public class FranceTravailService implements FetchService {
             throw new RuntimeException(e);
         }
     }
-
-    //TODO: extract in an AuthenticationService
-    private String getAccessToken() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "client_credentials");
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
-        body.add("scope", "o2dsoffre api_offresdemploiv2");
-
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-
-        log.info("Call to generate access token...");
-        ResponseEntity<String> response = restTemplate.exchange(
-                franceTravailAccessTokenUrl,
-                HttpMethod.POST,
-                entity,
-                String.class
-        );
-
-        if (HttpStatus.OK.equals(response.getStatusCode())) {
-            log.info("Access Token successfully retrieved.");
-
-            try {
-                JsonNode jsonNode = objectMapper.readTree(response.getBody());
-                return jsonNode.get("access_token").asText();
-            } catch (JsonProcessingException e) {
-                log.error("Failed to parse access token JSON: {}", e.getMessage());
-                throw new RuntimeException("Error parsing access token", e);
-            }
-
-        } else {
-            log.error("Failed to retrieve access token. Status code: {}", response.getStatusCode());
-            throw new RuntimeException("Failed to obtain access token: " + response.getStatusCode());
-        }
-    }
-
 }
