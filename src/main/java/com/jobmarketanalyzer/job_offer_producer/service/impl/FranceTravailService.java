@@ -41,7 +41,7 @@ public class FranceTravailService implements FetchService {
 
     @Override
     @Async
-    public CompletableFuture<JobOffersDTO> fetchDataFromApi() {
+    public CompletableFuture<JobOffersDTO> fetchData() {
         try {
             log.info("Call France Travail API ...");
 

@@ -18,12 +18,13 @@ public class JobOfferService {
     //@Scheduled(cron = "${cron.expression}", zone = "Europe/Paris")
     @Scheduled(fixedRate = 500000) //For development
     public void fetchOffer(){
-        CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchDataFromApi();
-        indeedService.fetchDataFromApi();
+        CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchData();
+        CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
 
-        franceTravailOffersFuture.thenAccept(franceTravailOffers ->
-                        System.out.println("Responses from France Travail")
         //TODO send response to kafka
-                );
+        franceTravailOffersFuture.thenAccept(franceTravailOffers -> System.out.println("Responses from France Travail"));
+
+        //TODO send response to kafka
+        indeedOffersFuture.thenAccept(indeedOffers -> System.out.println("Response from Indeed"));
     }
 }
