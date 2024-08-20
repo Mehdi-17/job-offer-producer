@@ -98,11 +98,10 @@ public class FranceTravailService implements FetchService {
         final String freelanceContract = "LIB";
         final String keywords = "Java";
 
-        //todo when the scheduled task will be set to 00:00:01, get offers of yesterday
-        LocalDate today = LocalDate.now();
-        ZonedDateTime startOfDay = today.atStartOfDay(ZoneOffset.UTC);
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        ZonedDateTime startOfDay = yesterday.atStartOfDay(ZoneOffset.UTC);
         String startOfDayFormatted = startOfDay.format(DateTimeFormatter.ISO_INSTANT);
-        ZonedDateTime endOfDay = today.atTime(23, 59, 59).atZone(ZoneOffset.UTC);
+        ZonedDateTime endOfDay = yesterday.atTime(23, 59, 59).atZone(ZoneOffset.UTC);
         String endOfDayFormatted = endOfDay.format(DateTimeFormatter.ISO_INSTANT);
 
         return UriComponentsBuilder.fromHttpUrl(franceTravailApiUrl)

@@ -17,8 +17,8 @@ public class JobOfferService {
     private final FetchService franceTravailService;
     private final FetchService indeedService;
 
-    //todo change the scheduled to 1 time a day at 00:00:01
-    @Scheduled(fixedRate = 14400000) //every 4 hours
+    //@Scheduled(cron = "${cron.expression}", zone = "Europe/Paris")
+    @Scheduled(fixedRate = 5000) //For development
     public void fetchOffer(){
         CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchDataFromApi();
         indeedService.fetchDataFromApi();
