@@ -97,8 +97,8 @@ public class FranceTravailService implements FetchService {
         return UriComponentsBuilder.fromHttpUrl(franceTravailApiUrl)
                 .queryParam("typeContrat", freelanceContract)
                 .queryParam("motsCles", keywords)
-//                .queryParam("minCreationDate", startOfDayFormatted)
-//                .queryParam("maxCreationDate", endOfDayFormatted)
+                .queryParam("minCreationDate", startOfDayFormatted)
+                .queryParam("maxCreationDate", endOfDayFormatted)
                 .build()
                 .toUriString();
     }
