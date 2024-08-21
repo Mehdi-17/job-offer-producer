@@ -20,6 +20,7 @@ public class JobOfferService {
     public void fetchOffer(){
         CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchData();
         CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
+        //TODO: add freework scrapping
 
         //todo voir comment on vérifie que les futurs sont bon
         //TODO send response to kafka
