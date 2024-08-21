@@ -21,6 +21,7 @@ public class JobOfferService {
         CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchData();
         CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
 
+        //todo voir comment on vérifie que les futurs sont bon
         //TODO send response to kafka
         franceTravailOffersFuture.thenAccept(franceTravailOffers -> System.out.println("Responses from France Travail"));
 

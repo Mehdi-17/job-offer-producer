@@ -35,6 +35,12 @@ public class FranceTravailService implements FetchService {
     @Value("${france.travail.api.url}")
     private String franceTravailApiUrl;
 
+    @Value("${france.travail.api.contractType}")
+    private String freelanceContract;
+
+    @Value("${france.travail.api.keywords}")
+    private String keywords;
+
     private final AuthenticationService authenticationService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -68,7 +74,7 @@ public class FranceTravailService implements FetchService {
             };
         } catch (RestClientException e) {
             log.error("Error fetching data from France Travail: {}", e.getMessage());
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.failedFuture(e);
         }
     }
 
@@ -85,9 +91,6 @@ public class FranceTravailService implements FetchService {
     }
 
     private String buildApiUrl() {
-        final String freelanceContract = "LIB";
-        final String keywords = "Java";
-
         LocalDate yesterday = LocalDate.now().minusDays(1);
         ZonedDateTime startOfDay = yesterday.atStartOfDay(ZoneOffset.UTC);
         String startOfDayFormatted = startOfDay.format(DateTimeFormatter.ISO_INSTANT);
