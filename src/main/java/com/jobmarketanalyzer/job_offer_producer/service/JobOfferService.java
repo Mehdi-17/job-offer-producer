@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 @AllArgsConstructor
 public class JobOfferService {
 
+    private final KafkaProducerService kafkaProducerService;
     private final FetchService franceTravailService;
     private final FetchService indeedService;
 
@@ -23,10 +24,8 @@ public class JobOfferService {
         //TODO: add freework scrapping
 
         //todo voir comment on vérifie que les futurs sont bon
-        //TODO send response to kafka
-        franceTravailOffersFuture.thenAccept(franceTravailOffers -> System.out.println("Responses from France Travail"));
+        franceTravailOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
 
-        //TODO send response to kafka
-        indeedOffersFuture.thenAccept(indeedOffers -> System.out.println("Response from Indeed"));
+        indeedOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
     }
 }
