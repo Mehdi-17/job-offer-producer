@@ -1,14 +1,17 @@
 package com.jobmarketanalyzer.job_offer_producer.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
+import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -27,28 +30,49 @@ public class IndeedService implements FetchService {
     @Value("${indeed.job.elements}")
     private String indeedJobElementsName;
 
+    private final WebDriver driver;
+    private final ObjectMapper objectMapper;
+
     @Override
     @Async
     public CompletableFuture<JobOffersDTO> fetchData() {
-        scrapeJobOffer();
-        return null;
+
+            List<String> jobsText = scrapeJobOffer();
+
+            if (jobsText.isEmpty()){
+                return CompletableFuture.completedFuture(null);
+            }
+
+            ArrayNode arrayNode = objectMapper.createArrayNode();
+            for (String jobText : jobsText) {
+                ObjectNode jobNode = objectMapper.createObjectNode();
+
+                jobNode.put("job", jobText);
+                arrayNode.add(jobNode);
+            }
+
+        try {
+            String json = objectMapper.writeValueAsString(arrayNode);
+
+            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), json));
+        } catch (JsonProcessingException e) {
+            log.error("Error when writing JSON string for Indeed job.", e);
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
-    private void scrapeJobOffer(){
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36");
-        options.addArguments("--headless");
+    private List<String> scrapeJobOffer() {
+        try {
+            log.info("Start headless browser to scrape indeed job offers");
+            driver.get(indeedSearchUrl);
 
-        log.info("Start headless browser to scrape indeed job offers");
-        WebDriver driver = new ChromeDriver(options);
-        driver.get(indeedSearchUrl);
+            List<WebElement> elements = driver.findElements(By.cssSelector(indeedJobElementsName));
+            log.info("Scrape {} offers on indeed", elements.size());
 
-        List<WebElement> elements = driver.findElements(By.cssSelector(indeedJobElementsName));
-        log.info("Scrape {} offers on indeed", elements.size());
-
-        for(WebElement element : elements){
-            //todo for each element, get data of job offers.
-            System.out.println(element.getAccessibleName());
+            return elements.stream().map(WebElement::getText).toList();
+        } finally {
+            log.info("Quit headless browser");
+            driver.quit();
         }
     }
 }
