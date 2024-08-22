@@ -22,7 +22,8 @@ public class KafkaProducerService {
             return;
         }
 
-        log.info("Job offer from {} will be send to kafka.", jobOffersDTO.source());
         kafkaTemplate.send(topicName, jobOffersDTO);
+        log.info("Job offer from {} send to kafka.", jobOffersDTO.source());
+
     }
 }
