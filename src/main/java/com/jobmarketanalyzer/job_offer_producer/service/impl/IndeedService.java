@@ -69,6 +69,8 @@ public class IndeedService implements FetchService {
             List<WebElement> elements = driver.findElements(By.cssSelector(indeedJobElementsName));
             log.info("Scrape {} offers on indeed", elements.size());
 
+            //Todo voir pour récupérer plus de data
+
             //TODO: prendre en compte quand on a plusieurs pages de résultats.
             return elements.stream().map(WebElement::getText).toList();
         } finally {
