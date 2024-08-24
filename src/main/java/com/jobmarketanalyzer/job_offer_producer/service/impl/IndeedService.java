@@ -54,19 +54,8 @@ public class IndeedService implements FetchService {
             return CompletableFuture.completedFuture(null);
         }
 
-        ArrayNode arrayNode = objectMapper.createArrayNode();
-        for (JobOffer jobOffer : jobOffers) {
-            ObjectNode jobNode = objectMapper.createObjectNode();
-            jobNode.put("title", jobOffer.title());
-            jobNode.put("description", jobOffer.description());
-            jobNode.put("dailyRate", jobOffer.dailyRate());
-            arrayNode.add(jobNode);
-        }
-
         try {
-            String json = objectMapper.writeValueAsString(arrayNode);
-
-            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), json));
+            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), buildJson(jobOffers)));
         } catch (JsonProcessingException e) {
             log.error("Error when writing JSON string for Indeed job.", e);
             return CompletableFuture.failedFuture(e);
@@ -78,7 +67,7 @@ public class IndeedService implements FetchService {
             log.info("Start headless browser to scrape indeed job offers");
             driver.get(indeedSearchUrl);
 
-            List<String> jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el->el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
+            List<String> jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
             log.info("Scrape {} offers on indeed", jobIdList.size());
 
             Set<JobOffer> jobOfferSet = new HashSet<>();
@@ -102,5 +91,19 @@ public class IndeedService implements FetchService {
             log.info("Quit headless browser");
             driver.quit();
         }
+    }
+
+    private String buildJson(Set<JobOffer> jobOffers) throws JsonProcessingException {
+        ArrayNode arrayNode = objectMapper.createArrayNode();
+
+        for (JobOffer jobOffer : jobOffers) {
+            ObjectNode jobNode = objectMapper.createObjectNode();
+            jobNode.put("title", jobOffer.title());
+            jobNode.put("description", jobOffer.description());
+            jobNode.put("dailyRate", jobOffer.dailyRate());
+            arrayNode.add(jobNode);
+        }
+
+        return objectMapper.writeValueAsString(arrayNode);
     }
 }
