@@ -12,10 +12,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,6 +66,20 @@ public class IndeedService implements FetchService {
         }
     }
 
+    private String buildJson(Set<JobOffer> jobOffers) throws JsonProcessingException {
+        ArrayNode arrayNode = objectMapper.createArrayNode();
+
+        for (JobOffer jobOffer : jobOffers) {
+            ObjectNode jobNode = objectMapper.createObjectNode();
+            jobNode.put("title", jobOffer.title());
+            jobNode.put("description", jobOffer.description());
+            jobNode.put("dailyRate", jobOffer.dailyRate());
+            arrayNode.add(jobNode);
+        }
+
+        return objectMapper.writeValueAsString(arrayNode);
+    }
+
     private Set<JobOffer> scrapeJobOffer() {
         try {
             log.info("Start headless browser to scrape indeed job offers");
@@ -76,13 +94,10 @@ public class IndeedService implements FetchService {
                 String newUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
                 driver.get(newUrl);
 
-                JobOffer scrappedOffer = JobOffer.builder()
-                        .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
-                        .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
-                        .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
-                        .build();
+                WebDriverWait wait =new WebDriverWait(driver, Duration.ofSeconds(1));
+                wait.until(ExpectedConditions.urlContains(jobId));
 
-                jobOfferSet.add(scrappedOffer);
+                jobOfferSet.add(buildJobOffer());
             }
 
             //TODO: prendre en compte quand on a plusieurs pages de résultats.
@@ -93,17 +108,12 @@ public class IndeedService implements FetchService {
         }
     }
 
-    private String buildJson(Set<JobOffer> jobOffers) throws JsonProcessingException {
-        ArrayNode arrayNode = objectMapper.createArrayNode();
-
-        for (JobOffer jobOffer : jobOffers) {
-            ObjectNode jobNode = objectMapper.createObjectNode();
-            jobNode.put("title", jobOffer.title());
-            jobNode.put("description", jobOffer.description());
-            jobNode.put("dailyRate", jobOffer.dailyRate());
-            arrayNode.add(jobNode);
-        }
-
-        return objectMapper.writeValueAsString(arrayNode);
+    private JobOffer buildJobOffer(){
+        return JobOffer.builder()
+                .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
+                .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
+                .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
+                .build();
     }
+
 }
