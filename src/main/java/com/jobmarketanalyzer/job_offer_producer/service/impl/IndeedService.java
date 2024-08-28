@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -79,33 +82,80 @@ public class IndeedService implements FetchService {
         return objectMapper.writeValueAsString(arrayNode);
     }
 
+    //todo a chaque fois qu'on va selectionner un élément on le fait dans un try catch au lieu d'avoir tout le code dans un gros try catch
+    //todo toujours une erreur à la page 5, voir s'il n'y a pas un blocage automatique
     private Set<JobOffer> scrapeJobOffer() {
+        int pageIndex = 1;
         try {
             log.info("Start headless browser to scrape indeed job offers");
             driver.get(indeedSearchUrl);
 
-            List<String> jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
-            log.info("Scrape {} offers on indeed", jobIdList.size());
-
             Set<JobOffer> jobOfferSet = new HashSet<>();
+            boolean isNextPage = true;
 
-            for (String jobId : jobIdList) {
-                String newUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
-                driver.get(newUrl);
+            while (isNextPage) {
+                List<String> jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
+                log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
 
-                WebDriverWait wait =new WebDriverWait(driver, Duration.ofSeconds(1));
-                wait.until(ExpectedConditions.urlContains(jobId));
+                for (String jobId : jobIdList) {
+                    String newUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
+                    driver.get(newUrl);
 
-                jobOfferSet.add(buildJobOffer());
+                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+                    wait.until(ExpectedConditions.urlContains(jobId));
+
+                    jobOfferSet.add(buildJobOffer());
+                }
+
+                String nextUrl = getUrlNextPage();
+                isNextPage = urlIsValid(nextUrl);
+                if (isNextPage){
+                    pageIndex++;
+                    driver.get(nextUrl);
+                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+                    wait.until(ExpectedConditions.urlContains("vjk="));
+                }
             }
 
-            //TODO: prendre en compte quand on a plusieurs pages de résultats.
+            log.info("Scrape {} offers on indeed", jobOfferSet.size());
             return jobOfferSet;
+        } catch (Exception e ){
+            log.error("Error when scrapping Indeed on page {} : ", pageIndex, e);
         } finally {
             log.info("Quit headless browser");
             driver.quit();
         }
+
+        return Set.of();
     }
+
+    private String getUrlNextPage() {
+        WebElement paginationNav = driver.findElement(By.cssSelector("nav[role='navigation'][aria-label='pagination'] ul"));
+        List<WebElement> paginationItems = paginationNav.findElements(By.tagName("li"));
+
+        if (paginationItems.isEmpty()) {
+            log.info("Indeed scrapping : this was the last page.");
+            return null;
+        }
+
+        log.info("Indeed scrapping: there is a next page.");
+        WebElement lastPaginationItem = paginationItems.get(paginationItems.size() - 1);
+
+        WebElement anchorTag = lastPaginationItem.findElement(By.tagName("a"));
+
+        return anchorTag.getAttribute("href");
+    }
+
+    private boolean urlIsValid(String url){
+        if (url == null){
+            return false;
+        }
+        String regExUrl = "^(https?|ftp)://[^\\s/$.?#].[^\\s]*$";
+        Matcher matcher = Pattern.compile(regExUrl).matcher(url);
+
+        return matcher.matches();
+    }
+
 
     private JobOffer buildJobOffer(){
         return JobOffer.builder()
