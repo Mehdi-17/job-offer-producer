@@ -82,8 +82,6 @@ public class IndeedService implements FetchService {
         return objectMapper.writeValueAsString(arrayNode);
     }
 
-    //todo a chaque fois qu'on va selectionner un élément on le fait dans un try catch au lieu d'avoir tout le code dans un gros try catch
-    //todo toujours une erreur à la page 5, voir s'il n'y a pas un blocage automatique
     private Set<JobOffer> scrapeJobOffer() {
         int pageIndex = 1;
         try {
@@ -99,34 +97,49 @@ public class IndeedService implements FetchService {
 
                 for (String jobId : jobIdList) {
                     String newUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
-                    driver.get(newUrl);
 
-                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-                    wait.until(ExpectedConditions.urlContains(jobId));
+                    try {
+                        goTo(newUrl, jobId);
+                    } catch (Exception e) {
+                        log.error("Error when trying to open the product's page : {}.", e.getMessage(), e);
+                        log.info("Scrape {} offers on indeed", jobOfferSet.size());
+                        return jobOfferSet;
+                    }
 
                     jobOfferSet.add(buildJobOffer());
                 }
 
                 String nextUrl = getUrlNextPage();
                 isNextPage = urlIsValid(nextUrl);
-                if (isNextPage){
+                if (isNextPage) {
                     pageIndex++;
-                    driver.get(nextUrl);
-                    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-                    wait.until(ExpectedConditions.urlContains("vjk="));
+
+                    try {
+                        goTo(nextUrl, "vjk=");
+                    } catch (Exception e) {
+                        log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
+                        log.info("Scrape {} offers on indeed", jobOfferSet.size());
+                        return jobOfferSet;
+                    }
                 }
             }
 
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
             return jobOfferSet;
-        } catch (Exception e ){
-            log.error("Error when scrapping Indeed on page {} : ", pageIndex, e);
         } finally {
             log.info("Quit headless browser");
             driver.quit();
         }
+    }
 
-        return Set.of();
+    private void goTo(String url, String expectedCondition) throws Exception {
+        try {
+            driver.get(url);
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            wait.until(ExpectedConditions.urlContains(expectedCondition));
+        } catch (Exception e) {
+            throw new Exception("Failed to navigate to the URL or meet the expected condition.", e);
+        }
     }
 
     private String getUrlNextPage() {
@@ -146,8 +159,8 @@ public class IndeedService implements FetchService {
         return anchorTag.getAttribute("href");
     }
 
-    private boolean urlIsValid(String url){
-        if (url == null){
+    private boolean urlIsValid(String url) {
+        if (url == null) {
             return false;
         }
         String regExUrl = "^(https?|ftp)://[^\\s/$.?#].[^\\s]*$";
@@ -156,8 +169,7 @@ public class IndeedService implements FetchService {
         return matcher.matches();
     }
 
-
-    private JobOffer buildJobOffer(){
+    private JobOffer buildJobOffer() {
         return JobOffer.builder()
                 .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
                 .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
