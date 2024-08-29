@@ -83,12 +83,13 @@ public class IndeedService implements FetchService {
     }
 
     private Set<JobOffer> scrapeJobOffer() {
-        int pageIndex = 1;
+        Set<JobOffer> jobOfferSet = new HashSet<>();
+
         try {
             log.info("Start headless browser to scrape indeed job offers");
             driver.get(indeedSearchUrl);
 
-            Set<JobOffer> jobOfferSet = new HashSet<>();
+            int pageIndex = 1;
             boolean isNextPage = true;
 
             while (isNextPage) {
@@ -106,7 +107,11 @@ public class IndeedService implements FetchService {
                         return jobOfferSet;
                     }
 
-                    jobOfferSet.add(buildJobOffer());
+                    try {
+                        jobOfferSet.add(buildJobOffer());
+                    }catch (Exception e){
+                        log.error("Error when trying to retrieve fields : {}.", e.getMessage(), e);
+                    }
                 }
 
                 String nextUrl = getUrlNextPage();
@@ -125,6 +130,9 @@ public class IndeedService implements FetchService {
             }
 
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
+            return jobOfferSet;
+        }catch (Exception e){
+            log.error("There is an unexpected exception.", e);
             return jobOfferSet;
         } finally {
             log.info("Quit headless browser");
@@ -169,12 +177,17 @@ public class IndeedService implements FetchService {
         return matcher.matches();
     }
 
-    private JobOffer buildJobOffer() {
-        return JobOffer.builder()
-                .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
-                .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
-                .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
-                .build();
+    private JobOffer buildJobOffer() throws Exception {
+        try {
+            return JobOffer.builder()
+                    .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
+                    .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
+                    .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
+                    .build();
+
+        }catch (Exception e){
+            throw new Exception("Element not found in page.", e);
+        }
     }
 
 }
