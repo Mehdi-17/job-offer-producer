@@ -20,6 +20,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -93,14 +94,19 @@ public class IndeedService implements FetchService {
             boolean isNextPage = true;
 
             while (isNextPage) {
-                List<String> jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
-                log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
+                List<String> jobIdList = new ArrayList<>();
+                try {
+                    jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
+                    log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
+                } catch (Exception e) {
+                    log.error("Error trying to find job id list.", e);
+                }
 
                 for (String jobId : jobIdList) {
-                    String newUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
+                    String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
 
                     try {
-                        goTo(newUrl, jobId);
+                        goTo(newJobUrl, jobId);
                     } catch (Exception e) {
                         log.error("Error when trying to open the product's page : {}.", e.getMessage(), e);
                         log.info("Scrape {} offers on indeed", jobOfferSet.size());
@@ -108,8 +114,9 @@ public class IndeedService implements FetchService {
                     }
 
                     try {
+                        slowDownImAHumanHahaDontWorryBro();
                         jobOfferSet.add(buildJobOffer());
-                    }catch (Exception e){
+                    } catch (Exception e) {
                         log.error("Error when trying to retrieve fields : {}.", e.getMessage(), e);
                     }
                 }
@@ -131,7 +138,7 @@ public class IndeedService implements FetchService {
 
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
             return jobOfferSet;
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("There is an unexpected exception.", e);
             return jobOfferSet;
         } finally {
@@ -143,6 +150,7 @@ public class IndeedService implements FetchService {
     private void goTo(String url, String expectedCondition) throws Exception {
         try {
             driver.get(url);
+            slowDownImAHumanHahaDontWorryBro();
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
             wait.until(ExpectedConditions.urlContains(expectedCondition));
         } catch (Exception e) {
@@ -185,9 +193,15 @@ public class IndeedService implements FetchService {
                     .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
                     .build();
 
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new Exception("Element not found in page.", e);
         }
+    }
+
+    private void slowDownImAHumanHahaDontWorryBro() throws InterruptedException {
+        log.info("Slow down, i'm a real human.");
+        Thread.sleep(2000);
+        log.info("Lets go bro...");
     }
 
 }

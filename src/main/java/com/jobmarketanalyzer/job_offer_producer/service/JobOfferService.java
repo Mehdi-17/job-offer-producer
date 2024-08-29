@@ -17,7 +17,7 @@ public class JobOfferService {
     private final FetchService indeedService;
 
     //@Scheduled(cron = "${cron.expression}", zone = "Europe/Paris")
-    @Scheduled(fixedRate = 500000) //For development
+    @Scheduled(fixedRate = 50000000) //For development
     public void fetchOffer(){
         CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchData();
         CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
