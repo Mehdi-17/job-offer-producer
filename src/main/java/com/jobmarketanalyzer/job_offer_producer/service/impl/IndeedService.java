@@ -88,7 +88,6 @@ public class IndeedService implements FetchService {
         return objectMapper.writeValueAsString(arrayNode);
     }
 
-    //TODO CHECK CLAUDE CONV TO ENHANCE
     private Set<JobOffer> scrapeJobOffer() {
         Set<JobOffer> jobOfferSet = new HashSet<>();
 
