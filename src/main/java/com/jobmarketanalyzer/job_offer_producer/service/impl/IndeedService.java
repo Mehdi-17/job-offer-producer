@@ -8,6 +8,7 @@ import com.jobmarketanalyzer.job_offer_producer.model.JobOffer;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
+import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
@@ -31,7 +32,7 @@ import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class IndeedService implements FetchService {
+public class IndeedService implements FetchService, JobScraper {
 
     private static final int WAIT_TIMEOUT_SECONDS = 5;
     private static final int HUMAN_DELAY_MILLIS = 2000;
@@ -87,7 +88,8 @@ public class IndeedService implements FetchService {
         return objectMapper.writeValueAsString(arrayNode);
     }
 
-    private Set<JobOffer> scrapeJobOffer() {
+    @Override
+    public Set<JobOffer> scrapeJobOffer() {
         Set<JobOffer> jobOfferSet = new HashSet<>();
 
         try {
@@ -106,7 +108,6 @@ public class IndeedService implements FetchService {
 
                     try {
                         goTo(newJobUrl, jobId);
-//                        slowDownImAHumanHahaDontWorryBro();
                         jobOfferSet.add(buildJobOffer(jobId));
                     } catch (Exception e) {
                         log.error("Error processing job offer: {}", e.getMessage(), e);
