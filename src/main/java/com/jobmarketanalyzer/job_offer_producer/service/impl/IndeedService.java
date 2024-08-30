@@ -20,13 +20,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid;
 
@@ -74,6 +72,7 @@ public class IndeedService implements FetchService {
         }
     }
 
+    //todo To extract when the freework scraper will be in building
     private String buildJson(Set<JobOffer> jobOffers) throws JsonProcessingException {
         ArrayNode arrayNode = objectMapper.createArrayNode();
 
