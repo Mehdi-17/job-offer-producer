@@ -33,6 +33,9 @@ import java.util.regex.Pattern;
 @Slf4j
 public class IndeedService implements FetchService {
 
+    private static final int WAIT_TIMEOUT_SECONDS = 5;
+    private static final int HUMAN_DELAY_MILLIS = 2000;
+
     @Value("${indeed.search.url}")
     private String indeedSearchUrl;
 
@@ -83,6 +86,7 @@ public class IndeedService implements FetchService {
         return objectMapper.writeValueAsString(arrayNode);
     }
 
+    //TODO CHECK CLAUDE CONV TO ENHANCE
     private Set<JobOffer> scrapeJobOffer() {
         Set<JobOffer> jobOfferSet = new HashSet<>();
 
@@ -94,30 +98,20 @@ public class IndeedService implements FetchService {
             boolean isNextPage = true;
 
             while (isNextPage) {
-                List<String> jobIdList = new ArrayList<>();
-                try {
-                    jobIdList = driver.findElements(By.cssSelector(indeedJobElementsName)).stream().map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1]).toList();
-                    log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
-                } catch (Exception e) {
-                    log.error("Error trying to find job id list.", e);
-                }
+                List<String> jobIdList = extractJobId();
+                log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
 
                 for (String jobId : jobIdList) {
                     String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
 
                     try {
                         goTo(newJobUrl, jobId);
+//                        slowDownImAHumanHahaDontWorryBro();
+                        jobOfferSet.add(buildJobOffer(jobId));
                     } catch (Exception e) {
-                        log.error("Error when trying to open the product's page : {}.", e.getMessage(), e);
+                        log.error("Error processing job offer: {}", e.getMessage(), e);
                         log.info("Scrape {} offers on indeed", jobOfferSet.size());
                         return jobOfferSet;
-                    }
-
-                    try {
-                        slowDownImAHumanHahaDontWorryBro();
-                        jobOfferSet.add(buildJobOffer());
-                    } catch (Exception e) {
-                        log.error("Error when trying to retrieve fields : {}.", e.getMessage(), e);
                     }
                 }
 
@@ -147,11 +141,22 @@ public class IndeedService implements FetchService {
         }
     }
 
+    private List<String> extractJobId(){
+        try {
+            return driver.findElements(By.cssSelector(indeedJobElementsName)).stream()
+                    .map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1])
+                    .toList();
+        } catch (Exception e) {
+            log.error("Error trying to find job id list.", e);
+            return List.of();
+        }
+    }
+
     private void goTo(String url, String expectedCondition) throws Exception {
         try {
             driver.get(url);
             slowDownImAHumanHahaDontWorryBro();
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
             wait.until(ExpectedConditions.urlContains(expectedCondition));
         } catch (Exception e) {
             throw new Exception("Failed to navigate to the URL or meet the expected condition.", e);
@@ -185,8 +190,9 @@ public class IndeedService implements FetchService {
         return matcher.matches();
     }
 
-    private JobOffer buildJobOffer() throws Exception {
+    private JobOffer buildJobOffer(String jobId) throws Exception {
         try {
+            log.info("Scrapping job id {}.", jobId);
             return JobOffer.builder()
                     .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
                     .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
@@ -200,7 +206,7 @@ public class IndeedService implements FetchService {
 
     private void slowDownImAHumanHahaDontWorryBro() throws InterruptedException {
         log.info("Slow down, i'm a real human.");
-        Thread.sleep(2000);
+        Thread.sleep(HUMAN_DELAY_MILLIS);
         log.info("Lets go bro...");
     }
 
