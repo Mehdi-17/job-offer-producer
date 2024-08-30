@@ -28,6 +28,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -178,16 +180,6 @@ public class IndeedService implements FetchService {
         WebElement anchorTag = lastPaginationItem.findElement(By.tagName("a"));
 
         return anchorTag.getAttribute("href");
-    }
-
-    private boolean urlIsValid(String url) {
-        if (url == null) {
-            return false;
-        }
-        String regExUrl = "^(https?|ftp)://[^\\s/$.?#].[^\\s]*$";
-        Matcher matcher = Pattern.compile(regExUrl).matcher(url);
-
-        return matcher.matches();
     }
 
     private JobOffer buildJobOffer(String jobId) throws Exception {
