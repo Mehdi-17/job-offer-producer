@@ -2,8 +2,7 @@ package com.jobmarketanalyzer.job_offer_producer.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffer;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
