@@ -9,6 +9,7 @@ import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
+import com.jobmarketanalyzer.job_offer_producer.utils.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
@@ -66,26 +67,11 @@ public class IndeedService implements FetchService, JobScraper {
         }
 
         try {
-            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), buildJson(jobOffers)));
+            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), JsonUtils.buildJson(jobOffers, objectMapper)));
         } catch (JsonProcessingException e) {
             log.error("Error when writing JSON string for Indeed job.", e);
             return CompletableFuture.failedFuture(e);
         }
-    }
-
-    //todo To extract when the freework scraper will be in building
-    private String buildJson(Set<JobOffer> jobOffers) throws JsonProcessingException {
-        ArrayNode arrayNode = objectMapper.createArrayNode();
-
-        for (JobOffer jobOffer : jobOffers) {
-            ObjectNode jobNode = objectMapper.createObjectNode();
-            jobNode.put("title", jobOffer.title());
-            jobNode.put("description", jobOffer.description());
-            jobNode.put("dailyRate", jobOffer.dailyRate());
-            arrayNode.add(jobNode);
-        }
-
-        return objectMapper.writeValueAsString(arrayNode);
     }
 
     @Override
