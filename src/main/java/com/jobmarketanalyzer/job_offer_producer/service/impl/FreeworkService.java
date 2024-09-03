@@ -30,6 +30,9 @@ public class FreeworkService implements FetchService, JobScraper {
     @Value("${freework.search.url}")
     private String freeworkSearchUrl;
 
+    @Value("${freework.job.elements}")
+    private String freeworkJobElements;
+
     private final WebDriver driver;
     private final ObjectMapper objectMapper;
 
@@ -52,16 +55,27 @@ public class FreeworkService implements FetchService, JobScraper {
 
     @Override
     public Set<JobOffer> scrapeJobOffer() {
-        //TODO to implement
         Set<JobOffer> jobOfferSet = new HashSet<>();
 
         try {
             log.info("Start headless browser to scrape freework job offers");
             driver.get(freeworkSearchUrl);
+
             //todo implementation multipage scrape.
 
-            List<WebElement> elements = driver.findElements(By.xpath("//div[@data-v-c00a56b2='']"));
+            List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
+            log.info("Find {} elements on freework first page.", elements.size());
 
+            elements.forEach(jobElement -> {
+                jobOfferSet.add(JobOffer.builder()
+                        .title(jobElement.findElement(By.tagName("h2")).getText())
+                        .description(jobElement.findElement(By.tagName("p")).getText())
+                        .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
+                        .build());
+            });
+
+
+            return jobOfferSet;
         }catch (Exception e){
             log.error("There is an unexpected error when scraping Freework.", e);
             return jobOfferSet;
@@ -69,7 +83,5 @@ public class FreeworkService implements FetchService, JobScraper {
             log.info("Quit freework headless browser");
             driver.quit();
         }
-        //todo: to remove when implementation is ok
-        return null;
     }
 }
