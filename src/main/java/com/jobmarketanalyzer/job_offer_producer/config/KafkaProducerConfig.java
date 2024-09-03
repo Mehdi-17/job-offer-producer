@@ -1,6 +1,6 @@
 package com.jobmarketanalyzer.job_offer_producer.config;
 
-import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
+import com.jobmarketanalyzer.job_offer_producer.DTO.JobOffersDTO;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;

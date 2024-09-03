@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffer;
-import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
+import com.jobmarketanalyzer.job_offer_producer.DTO.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
@@ -119,10 +119,10 @@ public class IndeedService implements FetchService, JobScraper {
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
             return jobOfferSet;
         } catch (Exception e) {
-            log.error("There is an unexpected exception.", e);
+            log.error("There is an unexpected erro when scraping Indeed.", e);
             return jobOfferSet;
         } finally {
-            log.info("Quit headless browser");
+            log.info("Quit Indeed headless browser");
             driver.quit();
         }
     }

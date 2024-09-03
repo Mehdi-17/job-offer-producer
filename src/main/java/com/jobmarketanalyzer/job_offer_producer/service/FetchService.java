@@ -1,6 +1,6 @@
 package com.jobmarketanalyzer.job_offer_producer.service;
 
-import com.jobmarketanalyzer.job_offer_producer.model.JobOffersDTO;
+import com.jobmarketanalyzer.job_offer_producer.DTO.JobOffersDTO;
 
 import java.util.concurrent.CompletableFuture;
 
