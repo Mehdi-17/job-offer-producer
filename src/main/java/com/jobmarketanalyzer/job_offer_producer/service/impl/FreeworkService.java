@@ -71,11 +71,14 @@ public class FreeworkService implements FetchService, JobScraper {
             List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
             log.info("Find {} elements on freework first page.", elements.size());
 
-            elements.forEach(jobElement -> jobOfferSet.add(JobOffer.builder()
-                    .title(jobElement.findElement(By.tagName("h2")).getText())
-                    .description(jobElement.findElement(By.tagName("p")).getText())
-                    .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
-                    .build()));
+            elements.forEach(jobElement -> jobOfferSet.add(
+                    JobOffer
+                            .builder()
+                            .title(jobElement.findElement(By.tagName("h2")).getText())
+                            .description(jobElement.findElement(By.tagName("p")).getText())
+                            .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
+                            .build())
+            );
 
             return jobOfferSet;
         }catch (Exception e){
