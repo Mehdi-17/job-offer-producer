@@ -3,6 +3,7 @@ package com.jobmarketanalyzer.job_offer_producer.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.jobmarketanalyzer.job_offer_producer.config.WebDriverConfig;
 import com.jobmarketanalyzer.job_offer_producer.model.JobOffer;
 import com.jobmarketanalyzer.job_offer_producer.DTO.JobOffersDTO;
 import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
@@ -17,7 +18,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -25,6 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
 
 
 import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid;
@@ -52,30 +54,32 @@ public class IndeedService implements FetchService, JobScraper {
     @Value("${indeed.job.salary.element}")
     private String indeedJobSalaryElement;
 
-    private final WebDriver driver;
+    private final WebDriverConfig.WebDriverManager webDriverManager;
+    private final ExecutorService executorService;
     private final ObjectMapper objectMapper;
 
     @Override
-    @Async
     public CompletableFuture<JobOffersDTO> fetchData() {
+        return CompletableFuture.supplyAsync(()->{
+            Set<JobOffer> jobOffers = scrapeJobOffer();
 
-        Set<JobOffer> jobOffers = scrapeJobOffer();
+            if (jobOffers.isEmpty()) {
+                return null;
+            }
 
-        if (jobOffers.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            return CompletableFuture.completedFuture(new JobOffersDTO(SourceOffer.INDEED.name(), JsonUtils.buildJson(jobOffers, objectMapper)));
-        } catch (JsonProcessingException e) {
-            log.error("Error when writing JSON string for Indeed job.", e);
-            return CompletableFuture.failedFuture(e);
-        }
+            try {
+                return new JobOffersDTO(SourceOffer.INDEED.name(), JsonUtils.buildJson(jobOffers, objectMapper));
+            } catch (JsonProcessingException e) {
+                log.error("Error when writing JSON string for Indeed job.", e);
+               throw new CompletionException(e);
+            }
+        }, executorService);
     }
 
     @Override
     public Set<JobOffer> scrapeJobOffer() {
         Set<JobOffer> jobOfferSet = new HashSet<>();
+        WebDriver driver = webDriverManager.createWebDriver();
 
         try {
             log.info("Start headless browser to scrape indeed job offers");
@@ -85,15 +89,15 @@ public class IndeedService implements FetchService, JobScraper {
             boolean isNextPage = true;
 
             while (isNextPage) {
-                List<String> jobIdList = extractJobId();
+                List<String> jobIdList = extractJobId(driver);
                 log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
 
                 for (String jobId : jobIdList) {
                     String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
 
                     try {
-                        goTo(newJobUrl, jobId);
-                        jobOfferSet.add(buildJobOffer(jobId));
+                        goTo(driver, newJobUrl, jobId);
+                        jobOfferSet.add(buildJobOffer(driver, jobId));
                     } catch (Exception e) {
                         log.error("Error processing job offer: {}", e.getMessage(), e);
                         log.info("Scrape {} offers on indeed", jobOfferSet.size());
@@ -101,19 +105,22 @@ public class IndeedService implements FetchService, JobScraper {
                     }
                 }
 
-                String nextUrl = getUrlNextPage();
-                isNextPage = urlIsValid(nextUrl);
-                if (isNextPage) {
-                    pageIndex++;
+                if (!jobIdList.isEmpty()) {
+                    String nextUrl = getUrlNextPage(driver);
+                    isNextPage = urlIsValid(nextUrl);
+                    if (isNextPage) {
+                        pageIndex++;
 
-                    try {
-                        goTo(nextUrl, "vjk=");
-                    } catch (Exception e) {
-                        log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
-                        log.info("Scrape {} offers on indeed", jobOfferSet.size());
-                        return jobOfferSet;
+                        try {
+                            goTo(driver, nextUrl, "vjk=");
+                        } catch (Exception e) {
+                            log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
+                            log.info("Scrape {} offers on indeed", jobOfferSet.size());
+                            return jobOfferSet;
+                        }
                     }
                 }
+
             }
 
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
@@ -127,7 +134,7 @@ public class IndeedService implements FetchService, JobScraper {
         }
     }
 
-    private List<String> extractJobId(){
+    private List<String> extractJobId(WebDriver driver){
         try {
             return driver.findElements(By.cssSelector(indeedJobElementsName)).stream()
                     .map(el -> el.findElement(By.tagName("a")).getAttribute("id").split("_")[1])
@@ -138,7 +145,7 @@ public class IndeedService implements FetchService, JobScraper {
         }
     }
 
-    private void goTo(String url, String expectedCondition) throws Exception {
+    private void goTo(WebDriver driver, String url, String expectedCondition) throws Exception {
         try {
             driver.get(url);
             slowDownImAHumanHahaDontWorryBro();
@@ -149,7 +156,7 @@ public class IndeedService implements FetchService, JobScraper {
         }
     }
 
-    private String getUrlNextPage() {
+    private String getUrlNextPage(WebDriver driver) {
         WebElement paginationNav = driver.findElement(By.cssSelector("nav[role='navigation'][aria-label='pagination'] ul"));
         List<WebElement> paginationItems = paginationNav.findElements(By.tagName("li"));
 
@@ -166,7 +173,7 @@ public class IndeedService implements FetchService, JobScraper {
         return anchorTag.getAttribute("href");
     }
 
-    private JobOffer buildJobOffer(String jobId) throws Exception {
+    private JobOffer buildJobOffer(WebDriver driver, String jobId) throws Exception {
         try {
             log.info("Scrapping job id {}.", jobId);
             return JobOffer.builder()
