@@ -83,6 +83,7 @@ public class IndeedService implements FetchService, JobScraper {
 
         try {
             log.info("Start headless browser to scrape indeed job offers");
+            //TODO VOIR POUR PASSER LE SECURITY CHECK DE INDEED
             driver.get(indeedSearchUrl);
 
             int pageIndex = 1;
@@ -119,6 +120,8 @@ public class IndeedService implements FetchService, JobScraper {
                             return jobOfferSet;
                         }
                     }
+                }else {
+                    isNextPage = false;
                 }
 
             }
