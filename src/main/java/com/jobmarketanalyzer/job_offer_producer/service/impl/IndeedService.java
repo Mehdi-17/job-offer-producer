@@ -10,6 +10,7 @@ import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
 import com.jobmarketanalyzer.job_offer_producer.utils.JsonUtils;
+import com.jobmarketanalyzer.job_offer_producer.utils.ScraperUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
@@ -37,7 +38,6 @@ import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid
 public class IndeedService implements FetchService, JobScraper {
 
     private static final int WAIT_TIMEOUT_SECONDS = 5;
-    private static final int HUMAN_DELAY_MILLIS = 2000;
 
     @Value("${indeed.search.url}")
     private String indeedSearchUrl;
@@ -151,7 +151,7 @@ public class IndeedService implements FetchService, JobScraper {
     private void goTo(WebDriver driver, String url, String expectedCondition) throws Exception {
         try {
             driver.get(url);
-            slowDownImAHumanHahaDontWorryBro();
+            ScraperUtils.chillBroImHuman();
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
             wait.until(ExpectedConditions.urlContains(expectedCondition));
         } catch (Exception e) {
@@ -188,12 +188,6 @@ public class IndeedService implements FetchService, JobScraper {
         } catch (Exception e) {
             throw new Exception("Element not found in page.", e);
         }
-    }
-
-    private void slowDownImAHumanHahaDontWorryBro() throws InterruptedException {
-        log.info("Slow down, i'm a real human.");
-        Thread.sleep(HUMAN_DELAY_MILLIS);
-        log.info("Lets go bro...");
     }
 
 }
