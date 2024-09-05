@@ -9,20 +9,27 @@ import com.jobmarketanalyzer.job_offer_producer.model.enums.SourceOffer;
 import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
 import com.jobmarketanalyzer.job_offer_producer.utils.JsonUtils;
+import com.jobmarketanalyzer.job_offer_producer.utils.ScraperUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
+
+import static java.lang.StringTemplate.STR;
 
 @Service
 @RequiredArgsConstructor
@@ -67,18 +74,28 @@ public class FreeworkService implements FetchService, JobScraper {
             driver.get(freeworkSearchUrl);
 
             //todo implementation multipage scrape.
+            boolean isNextPage = true;
+            int pageIndex = 1;
 
-            List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
-            log.info("Find {} elements on freework first page.", elements.size());
+            while (isNextPage){
+                List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
+                log.info("Find {} elements on freework at page {}.", elements.size(), pageIndex);
 
-            elements.forEach(jobElement -> jobOfferSet.add(
-                    JobOffer
-                            .builder()
-                            .title(jobElement.findElement(By.tagName("h2")).getText())
-                            .description(jobElement.findElement(By.tagName("p")).getText())
-                            .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
-                            .build())
-            );
+                elements.forEach(jobElement -> jobOfferSet.add(
+                        JobOffer
+                                .builder()
+                                .title(jobElement.findElement(By.tagName("h2")).getText())
+                                .description(jobElement.findElement(By.tagName("p")).getText())
+                                .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
+                                .build())
+                );
+
+                isNextPage = checkIfNextButtonExist(driver, ++pageIndex);
+
+                if (isNextPage){
+                    clickOnButtonNextPage(driver, pageIndex);
+                }
+            }
 
             return jobOfferSet;
         }catch (Exception e){
@@ -88,5 +105,25 @@ public class FreeworkService implements FetchService, JobScraper {
             log.info("Quit freework headless browser");
             driver.quit();
         }
+    }
+
+    private boolean checkIfNextButtonExist(WebDriver driver, int pageIndex){
+        String cssSelector = STR."button[data-page='\{pageIndex}']";
+        try {
+            WebElement button = driver.findElement(By.cssSelector(cssSelector));
+            return button.getAttribute("disabled") == null;
+        }catch (NoSuchElementException e){
+            return false;
+        }
+    }
+
+    private void clickOnButtonNextPage(WebDriver driver, int pageIndex) throws InterruptedException{
+        String cssSelector = STR."button[data-page='\{pageIndex}']";
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement button = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector(cssSelector)));
+
+        button.click();
+        ScraperUtils.chillBroImHuman();
     }
 }
