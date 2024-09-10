@@ -21,14 +21,12 @@ public class JobOfferService {
     @Scheduled(fixedRate = 50000000) //For development
     public void fetchOffer(){
         CompletableFuture<JobOffersDTO> franceTravailOffersFuture = franceTravailService.fetchData();
-        CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
         CompletableFuture<JobOffersDTO> freeworkOffersFuture = freeworkService.fetchData();
+        CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
 
         //todo voir comment on vérifie que les futurs sont bon
         franceTravailOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
-
         indeedOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
-
         freeworkOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
     }
 }

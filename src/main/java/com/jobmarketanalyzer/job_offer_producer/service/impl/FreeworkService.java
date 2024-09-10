@@ -73,7 +73,6 @@ public class FreeworkService implements FetchService, JobScraper {
             log.info("Start headless browser to scrape freework job offers");
             driver.get(freeworkSearchUrl);
 
-            //todo implementation multipage scrape.
             boolean isNextPage = true;
             int pageIndex = 1;
 
