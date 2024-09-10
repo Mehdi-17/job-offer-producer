@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid;
@@ -54,6 +55,9 @@ public class IndeedService implements FetchService, JobScraper {
     @Value("${indeed.job.salary.element}")
     private String indeedJobSalaryElement;
 
+    @Value("${timeout.scraping}")
+    private int timeoutValue;
+
     private final WebDriverConfig.WebDriverManager webDriverManager;
     private final ExecutorService executorService;
     private final ObjectMapper objectMapper;
@@ -73,7 +77,7 @@ public class IndeedService implements FetchService, JobScraper {
                 log.error("Error when writing JSON string for Indeed job.", e);
                throw new CompletionException(e);
             }
-        }, executorService);
+        }, executorService).orTimeout(timeoutValue, TimeUnit.SECONDS);
     }
 
     @Override

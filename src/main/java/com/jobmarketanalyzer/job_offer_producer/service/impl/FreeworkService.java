@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.StringTemplate.STR;
 
@@ -41,6 +42,9 @@ public class FreeworkService implements FetchService, JobScraper {
 
     @Value("${freework.job.elements}")
     private String freeworkJobElements;
+
+    @Value("${timeout.scraping}")
+    private int timeoutValue;
 
     private final WebDriverConfig.WebDriverManager webDriverManager;
     private final ExecutorService executorService;
@@ -61,7 +65,7 @@ public class FreeworkService implements FetchService, JobScraper {
                 log.error("Error when writing JSON string for Freework job.", e);
                 throw new CompletionException(e);
             }
-        }, executorService);
+        }, executorService).orTimeout(timeoutValue, TimeUnit.SECONDS);
     }
 
     @Override
