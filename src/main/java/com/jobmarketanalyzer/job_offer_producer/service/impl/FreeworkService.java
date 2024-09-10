@@ -43,6 +43,12 @@ public class FreeworkService implements FetchService, JobScraper {
     @Value("${freework.job.elements}")
     private String freeworkJobElements;
 
+    @Value("${freework.job.salary.element}")
+    private String salaryElement;
+
+    @Value("${freework.job.next.page.button}")
+    private String nextButtonElement;
+
     @Value("${timeout.scraping}")
     private int timeoutValue;
 
@@ -89,7 +95,7 @@ public class FreeworkService implements FetchService, JobScraper {
                                 .builder()
                                 .title(jobElement.findElement(By.tagName("h2")).getText())
                                 .description(jobElement.findElement(By.tagName("p")).getText())
-                                .dailyRate(jobElement.findElement(By.xpath(".//span[contains(text(), '€⁄j')]")).getText())
+                                .dailyRate(jobElement.findElement(By.xpath(salaryElement)).getText())
                                 .build())
                 );
 
@@ -111,7 +117,7 @@ public class FreeworkService implements FetchService, JobScraper {
     }
 
     private boolean checkIfNextButtonExist(WebDriver driver, int pageIndex){
-        String cssSelector = STR."button[data-page='\{pageIndex}']";
+        String cssSelector = STR."\{nextButtonElement}'\{pageIndex}']";
         try {
             WebElement button = driver.findElement(By.cssSelector(cssSelector));
             return button.getAttribute("disabled") == null;
@@ -121,7 +127,7 @@ public class FreeworkService implements FetchService, JobScraper {
     }
 
     private void clickOnButtonNextPage(WebDriver driver, int pageIndex) throws InterruptedException{
-        String cssSelector = STR."button[data-page='\{pageIndex}']";
+        String cssSelector = STR."\{nextButtonElement}'\{pageIndex}']";
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         WebElement button = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector(cssSelector)));
