@@ -96,12 +96,14 @@ public class FreeworkService implements FetchService, JobScraper {
                                 .title(jobElement.findElement(By.tagName("h2")).getText())
                                 .description(jobElement.findElement(By.tagName("p")).getText())
                                 .dailyRate(jobElement.findElement(By.xpath(salaryElement)).getText())
+                                .company(jobElement.findElement(By.className("font-bold")).getText())
                                 .build())
                 );
 
                 isNextPage = checkIfNextButtonExist(driver, ++pageIndex);
 
                 if (isNextPage){
+                    //todo change from click to button to change url to go next page
                     clickOnButtonNextPage(driver, pageIndex);
                 }
             }

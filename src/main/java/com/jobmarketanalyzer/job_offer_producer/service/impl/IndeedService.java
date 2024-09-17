@@ -55,6 +55,9 @@ public class IndeedService implements FetchService, JobScraper {
     @Value("${indeed.job.salary.element}")
     private String indeedJobSalaryElement;
 
+    @Value("${indeed.job.company.element}")
+    private String indeedJobCompanyElement;
+
     @Value("${timeout.scraping}")
     private int timeoutValue;
 
@@ -187,6 +190,7 @@ public class IndeedService implements FetchService, JobScraper {
                     .title(driver.findElement(By.cssSelector(indeedJobTitleElement)).getText().split("-")[0].trim())
                     .description(driver.findElement(By.id(indeedJobDescElement)).getAttribute("innerHTML"))
                     .dailyRate(driver.findElement(By.id(indeedJobSalaryElement)).getText())
+                    .company(driver.findElement(By.cssSelector(indeedJobCompanyElement)).getText())
                     .build();
 
         } catch (Exception e) {
