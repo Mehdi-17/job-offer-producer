@@ -18,7 +18,6 @@ public class KafkaProducerService {
     private final KafkaTemplate<String, JobOffersDTO> kafkaTemplate;
 
     public void sendJobOffer(JobOffersDTO jobOffersDTO){
-        //todo voir si je dois pas mettre cette méthode en async
         if (jobOffersDTO == null){
             return;
         }
