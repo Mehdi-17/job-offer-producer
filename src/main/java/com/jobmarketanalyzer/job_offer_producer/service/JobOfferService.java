@@ -24,7 +24,6 @@ public class JobOfferService {
         CompletableFuture<JobOffersDTO> freeworkOffersFuture = freeworkService.fetchData();
         CompletableFuture<JobOffersDTO> indeedOffersFuture = indeedService.fetchData();
 
-        //todo voir comment on vérifie que les futurs sont bon
         franceTravailOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
         indeedOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
         freeworkOffersFuture.thenAccept(kafkaProducerService::sendJobOffer);
