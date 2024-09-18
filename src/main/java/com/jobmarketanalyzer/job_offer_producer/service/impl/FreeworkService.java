@@ -10,20 +10,18 @@ import com.jobmarketanalyzer.job_offer_producer.service.FetchService;
 import com.jobmarketanalyzer.job_offer_producer.service.JobScraper;
 import com.jobmarketanalyzer.job_offer_producer.utils.JsonUtils;
 import com.jobmarketanalyzer.job_offer_producer.utils.ScraperUtils;
+import com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -100,11 +98,19 @@ public class FreeworkService implements FetchService, JobScraper {
                                 .build())
                 );
 
-                isNextPage = checkIfNextButtonExist(driver, ++pageIndex);
+                String urlNextPage = STR."\{driver.getCurrentUrl()}&page=\{++pageIndex}";
+                isNextPage = UrlUtils.urlIsValid(urlNextPage) && checkIfNextButtonExist(driver, pageIndex);
 
                 if (isNextPage){
                     //todo change from click to button to change url to go next page
-                    clickOnButtonNextPage(driver, pageIndex);
+                    try {
+                        String expectedInUrl = STR."&page=\{pageIndex}";
+                        ScraperUtils.goTo(driver, urlNextPage, expectedInUrl);
+                    }catch (Exception e){
+                        log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
+                        log.info("Scrape {} offers on freework", jobOfferSet.size());
+                        return jobOfferSet;
+                    }
                 }
             }
 
@@ -126,15 +132,5 @@ public class FreeworkService implements FetchService, JobScraper {
         }catch (NoSuchElementException e){
             return false;
         }
-    }
-
-    private void clickOnButtonNextPage(WebDriver driver, int pageIndex) throws InterruptedException{
-        String cssSelector = STR."\{nextButtonElement}'\{pageIndex}']";
-
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        WebElement button = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector(cssSelector)));
-
-        button.click();
-        ScraperUtils.chillBroImHuman();
     }
 }
