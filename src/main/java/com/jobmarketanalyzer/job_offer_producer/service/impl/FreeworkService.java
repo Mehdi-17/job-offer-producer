@@ -82,7 +82,6 @@ public class FreeworkService implements FetchService, JobScraper {
             driver.get(freeworkSearchUrl);
 
             int pageIndex = 1;
-
             while (scrapeCurrentPage(driver, pageIndex, jobOfferSet)){
                 pageIndex++;
             }
