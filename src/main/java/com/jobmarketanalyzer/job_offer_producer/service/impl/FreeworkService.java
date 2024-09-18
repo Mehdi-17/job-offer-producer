@@ -102,7 +102,6 @@ public class FreeworkService implements FetchService, JobScraper {
                 isNextPage = UrlUtils.urlIsValid(urlNextPage) && checkIfNextButtonExist(driver, pageIndex);
 
                 if (isNextPage){
-                    //todo change from click to button to change url to go next page
                     try {
                         String expectedInUrl = STR."&page=\{pageIndex}";
                         ScraperUtils.goTo(driver, urlNextPage, expectedInUrl);
