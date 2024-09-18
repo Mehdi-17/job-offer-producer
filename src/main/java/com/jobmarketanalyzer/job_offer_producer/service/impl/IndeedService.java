@@ -16,12 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,8 +34,6 @@ import static com.jobmarketanalyzer.job_offer_producer.utils.UrlUtils.urlIsValid
 @RequiredArgsConstructor
 @Slf4j
 public class IndeedService implements FetchService, JobScraper {
-
-    private static final int WAIT_TIMEOUT_SECONDS = 5;
 
     @Value("${indeed.search.url}")
     private String indeedSearchUrl;
@@ -104,7 +99,7 @@ public class IndeedService implements FetchService, JobScraper {
                     String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
 
                     try {
-                        goTo(driver, newJobUrl, jobId);
+                        ScraperUtils.goTo(driver, newJobUrl, jobId);
                         jobOfferSet.add(buildJobOffer(driver, jobId));
                     } catch (Exception e) {
                         log.error("Error processing job offer: {}", e.getMessage(), e);
@@ -120,7 +115,7 @@ public class IndeedService implements FetchService, JobScraper {
                         pageIndex++;
 
                         try {
-                            goTo(driver, nextUrl, "vjk=");
+                            ScraperUtils.goTo(driver, nextUrl, "vjk=");
                         } catch (Exception e) {
                             log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
                             log.info("Scrape {} offers on indeed", jobOfferSet.size());
@@ -152,17 +147,6 @@ public class IndeedService implements FetchService, JobScraper {
         } catch (Exception e) {
             log.error("Error trying to find job id list.", e);
             return List.of();
-        }
-    }
-
-    private void goTo(WebDriver driver, String url, String expectedCondition) throws Exception {
-        try {
-            driver.get(url);
-            ScraperUtils.chillBroImHuman();
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_TIMEOUT_SECONDS));
-            wait.until(ExpectedConditions.urlContains(expectedCondition));
-        } catch (Exception e) {
-            throw new Exception("Failed to navigate to the URL or meet the expected condition.", e);
         }
     }
 
