@@ -91,6 +91,7 @@ public class IndeedService implements FetchService, JobScraper {
             int pageIndex = 1;
             boolean isNextPage = true;
 
+            //TODO REFACTO comme FreeworkService
             while (isNextPage) {
                 List<String> jobIdList = extractJobId(driver);
                 log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);

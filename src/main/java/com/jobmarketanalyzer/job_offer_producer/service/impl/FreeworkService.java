@@ -81,38 +81,13 @@ public class FreeworkService implements FetchService, JobScraper {
             log.info("Start headless browser to scrape freework job offers");
             driver.get(freeworkSearchUrl);
 
-            boolean isNextPage = true;
             int pageIndex = 1;
 
-            while (isNextPage){
-                List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
-                log.info("Find {} elements on freework at page {}.", elements.size(), pageIndex);
-
-                elements.forEach(jobElement -> jobOfferSet.add(
-                        JobOffer
-                                .builder()
-                                .title(jobElement.findElement(By.tagName("h2")).getText())
-                                .description(jobElement.findElement(By.tagName("p")).getText())
-                                .dailyRate(jobElement.findElement(By.xpath(salaryElement)).getText())
-                                .company(jobElement.findElement(By.className("font-bold")).getText())
-                                .build())
-                );
-
-                String urlNextPage = STR."\{driver.getCurrentUrl()}&page=\{++pageIndex}";
-                isNextPage = UrlUtils.urlIsValid(urlNextPage) && checkIfNextButtonExist(driver, pageIndex);
-
-                if (isNextPage){
-                    try {
-                        String expectedInUrl = STR."&page=\{pageIndex}";
-                        ScraperUtils.goTo(driver, urlNextPage, expectedInUrl);
-                    }catch (Exception e){
-                        log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
-                        log.info("Scrape {} offers on freework", jobOfferSet.size());
-                        return jobOfferSet;
-                    }
-                }
+            while (scrapeCurrentPage(driver, pageIndex, jobOfferSet)){
+                pageIndex++;
             }
 
+            log.info("Scrape {} offers on freework", jobOfferSet.size());
             return jobOfferSet;
         }catch (Exception e){
             log.error("There is an unexpected error when scraping Freework.", e);
@@ -123,8 +98,45 @@ public class FreeworkService implements FetchService, JobScraper {
         }
     }
 
-    private boolean checkIfNextButtonExist(WebDriver driver, int pageIndex){
-        String cssSelector = STR."\{nextButtonElement}'\{pageIndex}']";
+    private boolean scrapeCurrentPage(WebDriver driver, int pageIndex, Set<JobOffer> jobOfferSet) {
+        List<WebElement> elements = driver.findElements(By.cssSelector(freeworkJobElements));
+        log.info("Find {} elements on freework at page {}.", elements.size(), pageIndex);
+
+        elements.forEach(jobElement -> jobOfferSet.add(scrapeJobElement(jobElement)));
+
+        return navigateToNextPageIfExist(driver, pageIndex);
+    }
+
+    private JobOffer scrapeJobElement(WebElement jobElement) {
+        return JobOffer
+                .builder()
+                .title(jobElement.findElement(By.tagName("h2")).getText())
+                .description(jobElement.findElement(By.tagName("p")).getText())
+                .dailyRate(jobElement.findElement(By.xpath(salaryElement)).getText())
+                .company(jobElement.findElement(By.className("font-bold")).getText())
+                .build();
+    }
+
+    private boolean navigateToNextPageIfExist(WebDriver driver, int pageIndex){
+        int indexNextPage = pageIndex +1;
+        String urlNextPage = STR."\{driver.getCurrentUrl()}&page=\{indexNextPage}";
+
+        if (UrlUtils.urlIsValid(urlNextPage) && checkIfNextButtonExist(driver, indexNextPage)){
+            try {
+                String expectedInUrl = STR."&page=\{indexNextPage}";
+                ScraperUtils.goTo(driver, urlNextPage, expectedInUrl);
+                return true;
+            }catch (Exception e){
+                log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean checkIfNextButtonExist(WebDriver driver, int indexNextPage){
+        String cssSelector = STR."\{nextButtonElement}'\{indexNextPage}']";
         try {
             WebElement button = driver.findElement(By.cssSelector(cssSelector));
             return button.getAttribute("disabled") == null;
