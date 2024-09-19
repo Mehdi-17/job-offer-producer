@@ -82,51 +82,14 @@ public class IndeedService implements FetchService, JobScraper {
     public Set<JobOffer> scrapeJobOffer() {
         Set<JobOffer> jobOfferSet = new HashSet<>();
         WebDriver driver = webDriverManager.createWebDriver();
+        int pageIndex = 1;
 
         try {
             log.info("Start headless browser to scrape indeed job offers");
-
             driver.get(indeedSearchUrl);
 
-            int pageIndex = 1;
-            boolean isNextPage = true;
-
-            //TODO REFACTO comme FreeworkService
-            while (isNextPage) {
-                List<String> jobIdList = extractJobId(driver);
-                log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
-
-                for (String jobId : jobIdList) {
-                    String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
-
-                    try {
-                        ScraperUtils.goTo(driver, newJobUrl, jobId);
-                        jobOfferSet.add(buildJobOffer(driver, jobId));
-                    } catch (Exception e) {
-                        log.error("Error processing job offer: {}", e.getMessage(), e);
-                        log.info("Scrape {} offers on indeed", jobOfferSet.size());
-                        return jobOfferSet;
-                    }
-                }
-
-                if (!jobIdList.isEmpty()) {
-                    String nextUrl = getUrlNextPage(driver);
-                    isNextPage = urlIsValid(nextUrl);
-                    if (isNextPage) {
-                        pageIndex++;
-
-                        try {
-                            ScraperUtils.goTo(driver, nextUrl, "vjk=");
-                        } catch (Exception e) {
-                            log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
-                            log.info("Scrape {} offers on indeed", jobOfferSet.size());
-                            return jobOfferSet;
-                        }
-                    }
-                }else {
-                    isNextPage = false;
-                }
-
+            while (scrapeCurrentPage(driver, pageIndex, jobOfferSet)) {
+                pageIndex++;
             }
 
             log.info("Scrape {} offers on indeed", jobOfferSet.size());
@@ -138,6 +101,43 @@ public class IndeedService implements FetchService, JobScraper {
             log.info("Quit Indeed headless browser");
             driver.quit();
         }
+    }
+
+    private boolean scrapeCurrentPage(WebDriver driver, int pageIndex, Set<JobOffer> jobOfferSet){
+        List<String> jobIdList = extractJobId(driver);
+        log.info("Indeed scraping: there is {} on the page {}", jobIdList.size(), pageIndex);
+
+        for (String jobId : jobIdList) {
+            try {
+                String newJobUrl = driver.getCurrentUrl().replaceAll("(vjk=)[^&]*", "$1" + jobId);
+                ScraperUtils.goTo(driver, newJobUrl, jobId);
+                jobOfferSet.add(buildJobOffer(driver, jobId));
+            } catch (Exception e) {
+                log.error("Error processing job offer: {}", e.getMessage(), e);
+                log.info("Scrape {} offers on indeed", jobOfferSet.size());
+                return false;
+            }
+        }
+
+        return navigateToNextPageIfExist(driver, jobIdList);
+    }
+
+    private boolean navigateToNextPageIfExist(WebDriver driver, List<String> jobIdList){
+        if (!jobIdList.isEmpty()) {
+            String nextUrl = getUrlNextPage(driver);
+
+            if (urlIsValid(nextUrl)) {
+                try {
+                    ScraperUtils.goTo(driver, nextUrl, "vjk=");
+                    return true;
+                } catch (Exception e) {
+                    log.error("Error when trying to open the next page : {}.", e.getMessage(), e);
+                    return false;
+                }
+            }
+        }
+
+        return false;
     }
 
     private List<String> extractJobId(WebDriver driver){
