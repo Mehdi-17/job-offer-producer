@@ -160,9 +160,13 @@ public class IndeedService implements FetchService, JobScraper {
             return null;
         }
 
-        log.info("Indeed scrapping: there is a next page.");
         WebElement lastPaginationItem = paginationItems.get(paginationItems.size() - 1);
+        if(!lastPaginationItem.getText().isEmpty()){
+            log.info("Indeed scrapping : this was the last page.");
+            return null;
+        }
 
+        log.info("Indeed scrapping: there is a next page.");
         WebElement anchorTag = lastPaginationItem.findElement(By.tagName("a"));
 
         return anchorTag.getAttribute("href");
