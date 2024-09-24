@@ -18,6 +18,7 @@ public class JsonUtils {
             jobNode.put("title", jobOffer.title());
             jobNode.put("description", jobOffer.description());
             jobNode.put("dailyRate", jobOffer.dailyRate());
+            jobNode.put("company", jobOffer.company());
             arrayNode.add(jobNode);
         }
 
